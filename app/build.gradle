@@ -21,6 +21,7 @@ android {
 
     sourceSets{
         main{
+            main.java.srcDirs += 'src/main/kotlin'
             res.srcDirs += "src/main/res/layout/kotlin"
             res.srcDirs += "src/main/res/layout/java"
         }
