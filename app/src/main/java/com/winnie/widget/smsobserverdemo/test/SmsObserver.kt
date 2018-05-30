@@ -1,4 +1,4 @@
-package com.winnie.widget.smsobserverdemo.kotlin
+package com.winnie.widget.smsobserverdemo.test
 
 import android.content.Context
 import android.database.ContentObserver
@@ -7,6 +7,10 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Message
 import android.util.Log
+
+import com.winnie.widget.smsobserverdemo.java.MainActivity
+
+import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 /**
@@ -27,45 +31,46 @@ class SmsObserver(private val handler: Handler, private val context: Context, co
     // 然后才是另外一个,后面的数字是该短信在收件箱中的位置
     override fun onChange(selfChange: Boolean, uri: Uri) {
         super.onChange(selfChange, uri)
-        Log.e("smsobserver", "selfChange:" + selfChange + "Uri:" + uri.toString())
 
         if (uri.toString() == "content://sms/raw") {
             return
         }
 
-        var cursor: Cursor = context.contentResolver.query(uri, null, null, null, null)
+        // 降序查询我们的数据库,原作者代码竟然uri是"content://sms/inbox",而且还加了个查询条件(时间降序..)..感觉有点多此一举..
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
         if (cursor != null) {
             if (cursor.moveToFirst()) {
-                var address: String = cursor.getString(cursor.getColumnIndex("address"))
-                var body: String = cursor.getString(cursor.getColumnIndex("body"))
-                cursor.close()
-
+                val address = cursor.getString(cursor.getColumnIndex("address"))
+                val body = cursor.getString(cursor.getColumnIndex("body"))
+                Log.e("smsobserver", "get sms:address:" + address + "body:" + body)
+                cursor.close()// 最后用完游标千万记得关闭
 
                 // 在这里我们的短信提供商的号码如果是固定的话.我们可以再加一个判断,这样就不会受到别的短信应用的验证码的影响了
                 // 不然的话就在我们的正则表达式中,加一些自己的判断,例如短信中含有自己应用名字啊什么的...
                 if (!body.contains("猪八戒网")) {
-                    return;
+                    return
                 }
 
                 // 正则表达式的使用,从一段字符串中取出六位连续的数字
-                var pattern = Pattern.compile(compileValue)
-                var matcher = pattern.matcher(body)
-                if(matcher.find()){
+                val pattern = Pattern.compile(compileValue)
+                val matcher = pattern.matcher(body)
+                if (matcher.find()) {
                     // String
                     Log.e("smsobserver", "code:" + matcher.group(0))
                     Log.e("smsobserver", "contentObserver get code time:" + System.currentTimeMillis())
 
                     // 利用handler将得到的验证码发送给主界面
-                    var msg = Message.obtain()
+                    val msg = Message.obtain()
                     msg.what = MainActivity.received_code
                     msg.obj = matcher.group(0)
                     handler.sendMessage(msg)
+                } else {
+                    Log.e("smsobserver", "没有在短信中获取到合格的验证码")
                 }
 
             } else {
                 Log.e("smsobserver", "movetofirst为false了")
             }
-
         } else {
             Log.e("smsobserver", "cursor为null了")
         }
