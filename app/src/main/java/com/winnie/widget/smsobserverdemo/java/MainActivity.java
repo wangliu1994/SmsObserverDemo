@@ -2,9 +2,10 @@ package com.winnie.widget.smsobserverdemo.java;
 
 import android.Manifest;
 import android.content.DialogInterface;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
@@ -12,16 +13,13 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.winnie.widget.smsobserverdemo.R;
+import com.winnie.widget.smsobserverdemo.kotlin.ReadSmsUtils;
 import com.winnie.widget.smsobserverdemo.kotlin.SmsObserver;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -32,11 +30,14 @@ public class MainActivity extends AppCompatActivity {
     private TextView codeView;
     private SmsObserver smsObserver;
 
+    private SmsReceiver smsReceiver;
+
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             codeView.setText((String) msg.obj);
+            Log.e("mainActivity", "activity get code time:" + System.currentTimeMillis());
         }
     };
 
@@ -45,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == permission_code) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                init();
+                initSmsObserver();
             } else {
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_SMS)) {
                     showPermissionDialog();
@@ -78,11 +79,11 @@ public class MainActivity extends AppCompatActivity {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_SMS}, permission_code);
             }
         } else {
-            init();
+            initSmsObserver();
         }
     }
 
-    private void init() {
+    private void initSmsObserver() {
         smsObserver = new SmsObserver(handler, this, 6);
         Uri uri = Uri.parse("content://sms");
 
@@ -92,48 +93,24 @@ public class MainActivity extends AppCompatActivity {
          */
         getContentResolver().registerContentObserver(uri, true, smsObserver);
 
+        testReadSms();
+    }
+
+    private void testReadSms(){
         new Thread(new Runnable() {
             @Override
             public void run() {
-                Cursor cursor = getContentResolver().query(Uri.parse("content://sms/2687"), null, null, null, null);
-                if (cursor != null) {
-                    cursor.moveToFirst();
-                    if (!cursor.isAfterLast()) {
-                        String address = cursor.getString(cursor.getColumnIndex("address"));
-                        String body = cursor.getString(cursor.getColumnIndex("body"));
-                        Log.e("smsobserver", "get sms:address:" + address + "body:" + body);
-                        cursor.close();// 最后用完游标千万记得关闭
-
-                        // 在这里我们的短信提供商的号码如果是固定的话.我们可以再加一个判断,这样就不会受到别的短信应用的验证码的影响了
-                        // 不然的话就在我们的正则表达式中,加一些自己的判断,例如短信中含有自己应用名字啊什么的...
-                        if (!body.contains("猪八戒网")) {
-                            return;
-                        }
-
-                        // 正则表达式的使用,从一段字符串中取出六位连续的数字
-                        Pattern pattern = Pattern.compile("\\d6}");
-                        Matcher matcher = pattern.matcher(body);
-                        if (matcher.find()) {
-                            // String
-                            Log.e("smsobserver", "code:" + matcher.group(0));
-                            Log.e("smsobserver", "contentObserver get code time:" + System.currentTimeMillis());
-
-                            // 利用handler将得到的验证码发送给主界面
-                            Message msg = Message.obtain();
-                            msg.what = MainActivity.received_code;
-                            msg.obj = matcher.group(0);
-                            handler.sendMessage(msg);
-                        } else {
-                            Log.e("smsobserver", "没有在短信中获取到合格的验证码");
-                        }
-                    } else {
-                        Log.e("smsobserver", "movetofirst为false了");
-                    }
-                }
+                ReadSmsUtils.Utils.readSms(MainActivity.this, Uri.parse("content://sms/1"), "\\d{6}", handler);
             }
         }).run();
     }
 
+
+    private void initSmsReceiver(){
+        smsReceiver = new SmsReceiver(this, handler, 6);
+        IntentFilter intentFilter = new IntentFilter("android.provider.Telephony.SMS_RECEIVED");
+        registerReceiver(smsReceiver, intentFilter);
+    }
 
     /**
      * 权限引导弹窗
@@ -161,5 +138,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         getContentResolver().unregisterContentObserver(smsObserver);
+        unregisterReceiver(smsReceiver);
     }
 }

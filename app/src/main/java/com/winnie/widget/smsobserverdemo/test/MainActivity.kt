@@ -3,6 +3,7 @@ package com.winnie.widget.smsobserverdemo.test
 import android.Manifest
 import android.content.DialogInterface
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -11,11 +12,15 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.widget.TextView
 import android.widget.Toast
 
 import com.winnie.widget.smsobserverdemo.R
 import com.winnie.widget.smsobserverdemo.kotlin.SmsObserver
+
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 
 class MainActivity : AppCompatActivity() {
@@ -27,6 +32,7 @@ class MainActivity : AppCompatActivity() {
         override fun handleMessage(msg: Message) {
             super.handleMessage(msg)
             codeView!!.text = msg.obj as String
+            Log.e("mainactivity", "activity get code time:" + System.currentTimeMillis())
         }
     }
 
@@ -79,12 +85,20 @@ class MainActivity : AppCompatActivity() {
          * 如果为false表示精确匹配，即只会匹配这个给定的Uri。
          */
         contentResolver.registerContentObserver(uri, true, smsObserver!!)
+
+        testReadSms()
     }
 
+    private fun testReadSms() {
+        Thread(Runnable {
+            ReadSmsUtils.readSms(this@MainActivity, Uri.parse("content://sms/1"), "\\d{6}", handler)
+        }).run()
+    }
 
     /**
      * 权限引导弹窗
      */
+
     private fun showPermissionDialog() {
         AlertDialog.Builder(this)
                 .setTitle("获取短信权")

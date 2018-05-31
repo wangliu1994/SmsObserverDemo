@@ -1,7 +1,6 @@
 package com.winnie.widget.smsobserverdemo.kotlin
 
 import android.Manifest
-import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -11,11 +10,11 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.widget.TextView
 import android.widget.Toast
-
 import com.winnie.widget.smsobserverdemo.R
-
+import java.util.regex.Pattern
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,6 +25,7 @@ class MainActivity : AppCompatActivity() {
         override fun handleMessage(msg: Message) {
             super.handleMessage(msg)
             codeView!!.text = msg.obj as String
+            Log.e("mainactivity", "activity get code time:" + System.currentTimeMillis())
         }
     }
 
@@ -78,8 +78,15 @@ class MainActivity : AppCompatActivity() {
          * 如果为false表示精确匹配，即只会匹配这个给定的Uri。
          */
         contentResolver.registerContentObserver(uri, true, smsObserver!!)
+
+        testReadSms()
     }
 
+    private fun testReadSms() {
+        Thread(Runnable {
+            ReadSmsUtils.readSms(this, Uri.parse("content://sms/1"), "\\d{6}", handler)
+        }).run()
+    }
 
     /**
      * 权限引导弹窗
@@ -88,12 +95,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
                 .setTitle("获取短信权")
                 .setMessage("我们需要获取短信权限，才能读取短信验证码")
-                .setNegativeButton("取消")
-                { dialog, which ->
-                    finish()
-                }.setPositiveButton("确定") { dialog, which ->
-            ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.READ_SMS), permission_code)
-        }.show()
+                .setNegativeButton("取消") { dialog, which -> finish() }.setPositiveButton("确定") { dialog, which -> ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.READ_SMS), permission_code) }.show()
     }
 
     override fun onDestroy() {
