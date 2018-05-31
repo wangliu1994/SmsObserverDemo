@@ -1,6 +1,7 @@
 package com.winnie.widget.smsobserverdemo.kotlin
 
 import android.Manifest
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -14,18 +15,19 @@ import android.util.Log
 import android.widget.TextView
 import android.widget.Toast
 import com.winnie.widget.smsobserverdemo.R
-import java.util.regex.Pattern
 
 class MainActivity : AppCompatActivity() {
 
     private var codeView: TextView? = null
     private var smsObserver: SmsObserver? = null
 
+    private var smsReceiver: SmsReceiver? = null
+
     private val handler = object : Handler() {
         override fun handleMessage(msg: Message) {
             super.handleMessage(msg)
             codeView!!.text = msg.obj as String
-            Log.e("mainactivity", "activity get code time:" + System.currentTimeMillis())
+            Log.e("mainActivity", "activity get code time:" + System.currentTimeMillis())
         }
     }
 
@@ -33,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == permission_code) {
             if (grantResults.size > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                init()
+                initSmsObserver()
             } else {
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_SMS)) {
                     showPermissionDialog()
@@ -51,7 +53,8 @@ class MainActivity : AppCompatActivity() {
 
         codeView = findViewById(R.id.verify_code)
 
-        requestPermissions()
+        initSmsReceiver()
+//        requestPermissions()
     }
 
     /**
@@ -65,11 +68,11 @@ class MainActivity : AppCompatActivity() {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_SMS), permission_code)
             }
         } else {
-            init()
+            initSmsObserver()
         }
     }
 
-    private fun init() {
+    private fun initSmsObserver() {
         smsObserver = SmsObserver(handler, this, 6)
         val uri = Uri.parse("content://sms")
 
@@ -77,7 +80,7 @@ class MainActivity : AppCompatActivity() {
          * notifyForDescendents：如果为true表示以这个Uri为开头的所有Uri都会被匹配到，
          * 如果为false表示精确匹配，即只会匹配这个给定的Uri。
          */
-        contentResolver.registerContentObserver(uri, true, smsObserver!!)
+        contentResolver.registerContentObserver(uri, true, smsObserver)
 
         testReadSms()
     }
@@ -86,6 +89,12 @@ class MainActivity : AppCompatActivity() {
         Thread(Runnable {
             ReadSmsUtils.readSms(this, Uri.parse("content://sms/1"), "\\d{6}", handler)
         }).run()
+    }
+
+    private fun initSmsReceiver() {
+        smsReceiver = SmsReceiver(this, handler, 6)
+        val intentFilter = IntentFilter("android.provider.Telephony.SMS_RECEIVED")
+        registerReceiver(smsReceiver, intentFilter)
     }
 
     /**
@@ -100,7 +109,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        contentResolver.unregisterContentObserver(smsObserver!!)
+//        contentResolver.unregisterContentObserver(smsObserver)
+        unregisterReceiver(smsReceiver)
     }
 
     companion object {

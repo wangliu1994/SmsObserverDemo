@@ -65,7 +65,8 @@ public class MainActivity extends AppCompatActivity {
 
         codeView = findViewById(R.id.verify_code);
 
-        requestPermissions();
+        initSmsReceiver();
+//        requestPermissions();
     }
 
     /**
