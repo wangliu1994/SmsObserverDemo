@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                ReadSmsUtils.Utils.readSms(MainActivity.this, Uri.parse("content://sms/1"), "\\d{6}", handler);
+                ReadSmsUtils.readSms(MainActivity.this, Uri.parse("content://sms/1"), "\\d{6}", handler);
             }
         }).run();
     }

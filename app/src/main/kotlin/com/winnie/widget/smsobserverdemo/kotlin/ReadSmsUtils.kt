@@ -13,7 +13,9 @@ import java.util.regex.Pattern
  */
 class ReadSmsUtils {
 
-    companion object Utils{
+    companion object{
+
+        @JvmStatic
         fun readSms(context: Context, uri: Uri, compileValue: String, handler: Handler){
             var cursor: Cursor = context.contentResolver.query(uri, null, null, null, null)
             if (cursor != null) {
